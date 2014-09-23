@@ -69,10 +69,26 @@ def generate_corpus_file(pmids, medline_dir, fn):
         print >> fh, "\t".join([pmid, abstract])
     fh.close()
 
+def generate_dictionary():
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt")
+    mycorpus.make_dictionary("../data/gensim_complete_corpus.dict")
+
+def generate_gensim_corpus():
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt")
+    mycorpus.get_dictionary("../data/gensim_complete_corpus.dict")
+    mycorpus.make_gensim_corpus("../data/gensim_complete_corpus.mm", "../data/gensim_complete_corpus.tfidf")
+    
+def generate_gensim_models():
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt")
+    mycorpus.get_dictionary("../data/gensim_complete_corpus.dict")
+    mycorpus.make_gensim_models("../data/gensim_complete_corpus.mm", "../data/gensim_complete_corpus.tfidf", "../data/gensim_complete_corpus.lsi", "../data/gensim_complete_corpus.lda")
 
 if __name__ == "__main__":
     medline_dir = "/home/csherrill/src/school/proj/all_medline/data/20120702/all_medline/all_medline_files/"
-    determine_stats(medline_dir)
+    #determine_stats(medline_dir)
     #pmids = select_files_of_interest()
     #generate_corpus_file(pmids, medline_dir, "../data/corpus_all_stop-stem.txt")
+    #generate_dictionary()
+    #generate_gensim_corpus()
+    generate_gensim_models()
     

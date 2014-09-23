@@ -2,6 +2,7 @@
 
 import urllib
 import os
+from gensim import corpora, models, similarities
 
 
 from nltk.stem import PorterStemmer
@@ -29,3 +30,55 @@ def text2stop_stem(text):
     words_stop_stem = map(lambda x: ps.stem(x), words_stop)
     return words_stop_stem
 
+class MyCorpus(object):
+    def __init__(self, corpus_fn=""):
+        self.corpus_fn = corpus_fn
+
+
+    def __iter__(self):
+        fh = open(self.corpus_fn, "r")
+        for line_num, line in enumerate(fh):
+            if line_num % 200000 == 0:
+                print line_num
+            if line_num != 0:
+                yield line.strip().split("\t")[1].split(" ")
+        fh.close()
+
+    def _iter_bow(self):
+        for token_list in self:
+            yield self.dictionary.doc2bow(token_list)
+
+    def make_dictionary(self, fn):
+        dictionary = corpora.Dictionary(self)
+        print dictionary
+        #dictionary.save(fn)
+        token_ids = [tokenid for tokenid, docfreq in dictionary.dfs.iteritems() if docfreq < 10]
+        dictionary.filter_tokens(token_ids) # remove words that appear in few documents
+        dictionary.compactify()
+        print dictionary
+        dictionary.save(fn)
+        self.dictionary = dictionary
+
+    def get_dictionary(self, fn):
+        self.dictionary = corpora.Dictionary.load(fn)
+
+    def make_gensim_corpus(self, fn_mmcorpus, fn_tfidf):
+        print "making corpus"
+        corpora.MmCorpus.serialize(fn_mmcorpus, self._iter_bow())
+        print "making tfidf"
+        tfidf = models.TfidfModel(self._iter_bow())
+        tfidf.save(fn_tfidf)
+
+    def make_gensim_models(self, fn_mmcorpus, fn_tfidf, fn_lsi, fn_lda):
+        self.mycorpus = corpora.MmCorpus(fn_mmcorpus)
+        print "  corpus:", self.mycorpus
+        self.tfidf = models.TfidfModel.load(fn_tfidf)
+        print "  tfidf"
+        self.corpus_tfidf = self.tfidf[self.mycorpus]
+        print "  lsi"
+        self.lsi = models.LsiModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
+        self.lsi.save(fn_lsi)
+        print "  lda"
+        self.lda = models.LdaModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
+        self.lda.save(fn_lda)
+        
