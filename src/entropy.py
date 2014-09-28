@@ -98,6 +98,7 @@ class lsi_v(object):
                 dims = numpy.concatenate((dims, vt[dimension_min:dimension_max]), axis=1)
                 #pass
         return dims
+
     
     def _iter_dims_as_N_iles(self, N=8):
         for dim_min in range(0,500,50):

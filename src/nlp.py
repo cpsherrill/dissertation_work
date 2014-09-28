@@ -98,11 +98,15 @@ class MyCorpus(object):
         self.lsi = models.LsiModel.load(fn_lsi)
         self.v = gensim.matutils.corpus2dense(self.lsi[self.corpus_tfidf], len(self.lsi.projection.s)).T / self.lsi.projection.s
 
-    def make_gensim_vs(self, fn_mmcorpus, fn_tfidf, fn_lsi, chunk_size=300, corpus_size=800):
+    def make_gensim_vs(self, fn_mmcorpus, fn_tfidf, fn_lsi, chunk_size=300, corpus_size=800, restrict_ids=None):
         num_chunks = corpus_size/chunk_size +1
         for chunk_id in range(num_chunks):
             print chunk_id+1, "of", num_chunks
-            self.mycorpus = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
+            if restrict_ids is not None:
+                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
+            else:
+                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i in restrict_ids and i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
+            self.mycorpus = my_iterator
             print "  corpus:", self.mycorpus
             self.tfidf = models.TfidfModel.load(fn_tfidf)
             print "  tfidf"

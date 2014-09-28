@@ -5,7 +5,7 @@ import os
 import cPickle
 import numpy
 import entropy
-
+import graph_tools
 
 def make_dim_chunks(head=3630013, series_len=19, start=0, stop=50):
     my_lsi_v = entropy.lsi_v("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.v." % (head, ), series_len)
@@ -40,7 +40,7 @@ def make_dims_as_nested_means(head=3630013, splits=8):
     fh_w = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.nested_means.pickle" % (head, ), "w")
     counter = 0
     for dim_chunk in range(0,500,50):
-        fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.3630013.projection.vt2.%03d-%03d.pickle" % (dim_chunk, dim_chunk+50, ), "r")
+        fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.%03d-%03d.pickle" % (head, dim_chunk, dim_chunk+50, ), "r")
         for d in range(50):
             if counter%20 == 0:
                 print "dim", counter
@@ -52,9 +52,9 @@ def make_dims_as_nested_means(head=3630013, splits=8):
     fh_w.close()
     #fh_r.close()
 
-def make_conditional_entropies(head=3630013, ndims=100, idims=range(100), jdims=range(100)):
-    fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.nested_means.pickle2" % (head, ), "r")
-    fh_w = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.cond_entropy.txt.copy" % (head, ), "w")
+def make_conditional_entropies(head=3630013, ndims=100, idims=range(100), jdims=range(100), levels=256):
+    fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.nested_means.pickle" % (head, ), "r")
+    fh_w = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.cond_entropy.txt" % (head, ), "w")
     print >> fh_w, "\t".join(["## dim1", "dim2", "cond_entropy"])
     print "reading"
     dims = []
@@ -66,13 +66,32 @@ def make_conditional_entropies(head=3630013, ndims=100, idims=range(100), jdims=
         print i_dim1
         for i_dim2 in jdims: #range(ndims):
             if i_dim1 != i_dim2:
-                cond_entropy = entropy.cond_entropy(dims[i_dim1], dims[i_dim2], levels=256)
+                cond_entropy = entropy.cond_entropy(dims[i_dim1], dims[i_dim2], levels=levels)
                 print >> fh_w, "\t".join(map(str, [i_dim1, i_dim2, cond_entropy]))
     fh_w.close()
 
+def make_entropies(head=None):
+    fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.cond_entropy.txt" % (head, ), "r")
+    d_e = {}
+    for line in fh_r:
+        if "## " not in line:
+            fields = line.strip().split("\t")
+            dim1 = int(fields[0])
+            dim2 = int(fields[1])
+            ce   = float(fields[2])
+            dims = tuple(sorted([dim1, dim2]))
+            if dims not in d_e:
+                d_e[dims] = ce
+            else:
+                d_e[dims] = max([ce, d_e[dims]])
+    fh_r.close()
+    return d_e
 
-
-
+def make_cliques(head=None, threshold=0.452):
+    print "making entropies from conditional entropies"
+    d_e = make_entropies(head)
+    print "finding cliques"
+    return [i for i in graph_tools.entropies2cliques(d_e, threshold)]
 
 
 if __name__ == "__main__":
@@ -89,6 +108,16 @@ if __name__ == "__main__":
     make_dim_chunks(head=3630013, series_len=19, start= 450, stop= 500)
     '''
     ##make_dims(head=3630013, series_len=19)
-    #make_dims_as_nested_means(head=3630013, splits=8)
+    #make_dims_as_nested_means(head=47350, splits=5)
     ##make_dims_as_nested_means(head=102400, series_len=11, splits=4)
-    make_conditional_entropies(head=3630013, ndims=100)
+    #make_conditional_entropies(head=3630013, ndims=100)
+
+
+
+    # training
+    #for i in range(0,500,50):
+    #    make_dim_chunks(head=47350, series_len=1, start=i, stop=i+50)
+    #make_dims_as_nested_means(head=47350, splits=5)
+    #make_conditional_entropies(head=47350, ndims=500, idims=range(500), jdims=range(500), levels=32)
+    for t in [.450, .451, .452, .453, .454, .455]:
+        print t, make_cliques(head=47350, threshold=t)

@@ -3,6 +3,7 @@
 import cPickle
 import medline
 import nlp
+import random
 
 
 def determine_stats(medline_dir):
@@ -94,10 +95,68 @@ def generate_gensim_v(head=None):
     #v = cPickle.load(fh_r)
     #fh_r.close()
     
-def generate_gensim_vs(head=None):
+def generate_gensim_vs(head=None, restrict_ids=True):
+    ids = None
+    if restrict_ids:
+        fh = open("../data/medline_mesh_target_diseases.train.ids","r")
+        ids = []
+        for line in fh:
+            if "## " not in line:
+                ids += [int(line.strip().split("\t")[1])]
+        fh.close()
     mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
-    mycorpus.make_gensim_vs("../data/gensim_complete_corpus.mm", "../data/warehouse/gensim_complete_corpus.tfidf."+str(head), "../data/warehouse/gensim_complete_corpus.lsi."+str(head) , 200000, head)
+    mycorpus.make_gensim_vs("../data/gensim_complete_corpus.mm", "../data/warehouse/gensim_complete_corpus.tfidf."+str(head), "../data/warehouse/gensim_complete_corpus.lsi."+str(head) , 200000, head, ids)
 
+
+def generate_test_train():
+    fh = open("../data/medline_mesh_target_diseases.txt", "r")
+    lines = [line.replace("\n","") for line in fh.readlines()]
+    fh.close()
+    pmids = [line.split("\t")[0] for line in lines]
+    pmids = sorted(list(set(pmids)))
+    random.seed(1)
+    set_evaluation = set(random.sample(pmids, len(pmids)/2))
+    set_train = set([pmid for pmid in pmids if pmid not in set_evaluation])
+
+
+    fh_w_evalu = open("../data/medline_mesh_target_diseases.evalu.ids","w")
+    fh_w_train = open("../data/medline_mesh_target_diseases.train.ids","w")
+    print >> fh_w_evalu, "\t".join(["## pmid", "id"])
+    print >> fh_w_train, "\t".join(["## pmid", "id"])
+    fh = open("../data/corpus_all_stop-stem.txt", "r")
+    d_pmid2id = {}
+    for line_num, line in enumerate(fh):
+        if line_num % 500000 == 0:
+            print line_num
+        fields = line.split("\t")
+        pmid = fields[0]
+        if pmid in set_train:
+            print >> fh_w_train, "\t".join([pmid, str(line_num)])
+            d_pmid2id[pmid] = line_num
+        if pmid in set_evaluation:
+            print >> fh_w_evalu, "\t".join([pmid, str(line_num)])
+            d_pmid2id[pmid] = line_num
+    fh.close()
+    fh_w_evalu.close()
+    fh_w_train.close()
+
+    print len(set_train)
+    print len(set_evaluation)
+    print len(d_pmid2id)
+
+    fh_w_evalu = open("../data/medline_mesh_target_diseases.evalu.txt","w")
+    fh_w_train = open("../data/medline_mesh_target_diseases.train.txt","w")
+    print >> fh_w_evalu, "\t".join(["## pmid", "id", "major", "primary", "minors"])
+    print >> fh_w_train, "\t".join(["## pmid", "id", "major", "primary", "minors"])
+    for line in lines:
+        fields = line.split("\t")
+        if fields[0] in set_evaluation and fields[0] in d_pmid2id:
+            print >> fh_w_evalu, "\t".join([fields[0], str(d_pmid2id[fields[0]])]+fields[1:])
+        if fields[0] in set_train      and fields[0] in d_pmid2id:
+            print >> fh_w_train, "\t".join([fields[0], str(d_pmid2id[fields[0]])]+fields[1:])
+    fh_w_evalu.close()
+    fh_w_train.close()
+    
 
 if __name__ == "__main__":
     medline_dir = "/home/csherrill/src/school/proj/all_medline/data/20120702/all_medline/all_medline_files/"
@@ -107,5 +166,7 @@ if __name__ == "__main__":
     #generate_dictionary()
     #generate_gensim_corpus(409600)
     #generate_gensim_models(409600)
-    generate_gensim_vs(3630013)
+    #generate_gensim_vs(3630013)
+    #generate_test_train()
+    generate_gensim_vs(47350, restrict_ids=True) #project training only
     
