@@ -3,7 +3,8 @@
 import urllib
 import os
 from gensim import corpora, models, similarities
-
+import gensim
+import cPickle
 
 from nltk.stem import PorterStemmer
 ps = PorterStemmer()
@@ -31,17 +32,22 @@ def text2stop_stem(text):
     return words_stop_stem
 
 class MyCorpus(object):
-    def __init__(self, corpus_fn=""):
+    def __init__(self, corpus_fn="", head=None, pmids=None):
         self.corpus_fn = corpus_fn
-
+        self.head = head
+        self.pmids = pmids
 
     def __iter__(self):
         fh = open(self.corpus_fn, "r")
         for line_num, line in enumerate(fh):
             if line_num % 200000 == 0:
                 print line_num
+            if self.head and line_num+1 == self.head:
+                break
             if line_num != 0:
-                yield line.strip().split("\t")[1].split(" ")
+                fields = line.strip().split("\t")
+                if self.pmids is None or fields[1] in self.pmids:
+                    yield fields[1].split(" ")
         fh.close()
 
     def _iter_bow(self):
@@ -78,7 +84,34 @@ class MyCorpus(object):
         print "  lsi"
         self.lsi = models.LsiModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
         self.lsi.save(fn_lsi)
-        print "  lda"
-        self.lda = models.LdaModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
-        self.lda.save(fn_lda)
-        
+        #print "  lda"
+        #self.lda = models.LdaModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
+        #self.lda.save(fn_lda)
+    
+    def make_gensim_v(self, fn_mmcorpus, fn_tfidf, fn_lsi, fn_v):
+        self.mycorpus = corpora.MmCorpus(fn_mmcorpus)
+        print "  corpus:", self.mycorpus
+        self.tfidf = models.TfidfModel.load(fn_tfidf)
+        print "  tfidf"
+        self.corpus_tfidf = self.tfidf[self.mycorpus]
+        print "  lsi"
+        self.lsi = models.LsiModel.load(fn_lsi)
+        self.v = gensim.matutils.corpus2dense(self.lsi[self.corpus_tfidf], len(self.lsi.projection.s)).T / self.lsi.projection.s
+
+    def make_gensim_vs(self, fn_mmcorpus, fn_tfidf, fn_lsi, chunk_size=300, corpus_size=800):
+        num_chunks = corpus_size/chunk_size +1
+        for chunk_id in range(num_chunks):
+            print chunk_id+1, "of", num_chunks
+            self.mycorpus = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
+            print "  corpus:", self.mycorpus
+            self.tfidf = models.TfidfModel.load(fn_tfidf)
+            print "  tfidf"
+            self.corpus_tfidf = self.tfidf[self.mycorpus]
+            print "  lsi"
+            self.lsi = models.LsiModel.load(fn_lsi)
+            self.v = gensim.matutils.corpus2dense(self.lsi[self.corpus_tfidf], len(self.lsi.projection.s)).T / self.lsi.projection.s
+            fh_w = open(fn_lsi+".projection.v.%04d.pickle" % (chunk_id, ),"w")
+            cPickle.dump(self.v, fh_w)
+            fh_w.close()
+
+            

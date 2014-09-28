@@ -83,21 +83,8 @@ def generate_gensim_models(head=None):
     mycorpus.get_dictionary("../data/gensim_complete_corpus.dict")
     mycorpus.make_gensim_models("../data/gensim_complete_corpus.mm."+str(head), "../data/gensim_complete_corpus.tfidf."+str(head), "../data/gensim_complete_corpus.lsi."+str(head), "../data/gensim_complete_corpus.lda."+str(head))
 
-def generate_gensim_v(head=None):
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
-    mycorpus.make_gensim_v("../data/gensim_complete_corpus.mm."+str(head), "../data/gensim_complete_corpus.tfidf."+str(head), "../data/gensim_complete_corpus.lsi."+str(head), "../data/gensim_complete_corpus.lsi.%s.projection.v.pickle" % (str(head), ) )
-    fh_w = open("../data/gensim_complete_corpus.lsi.%s.projection.v.pickle" % (str(head), ),"w")
-    cPickle.dump(mycorpus.v, fh_w)
-    fh_w.close()
-
-    #fh_r = open("../data/gensim_complete_corpus.lsi.800.projection.v.pickle","r")
-    #v = cPickle.load(fh_r)
-    #fh_r.close()
-    
-def generate_gensim_vs(head=None):
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
-    mycorpus.make_gensim_vs("../data/gensim_complete_corpus.mm", "../data/warehouse/gensim_complete_corpus.tfidf."+str(head), "../data/warehouse/gensim_complete_corpus.lsi."+str(head) , 200000, head)
-
+def xxxx():
+    lsi = models.LsiModel.load("../data/gensim_complete_corpus.lsi.800")
 
 if __name__ == "__main__":
     medline_dir = "/home/csherrill/src/school/proj/all_medline/data/20120702/all_medline/all_medline_files/"
@@ -105,7 +92,6 @@ if __name__ == "__main__":
     #pmids = select_files_of_interest()
     #generate_corpus_file(pmids, medline_dir, "../data/corpus_all_stop-stem.txt")
     #generate_dictionary()
-    #generate_gensim_corpus(409600)
-    #generate_gensim_models(409600)
-    generate_gensim_vs(3630013)
+    generate_gensim_corpus(409600)
+    generate_gensim_models(409600)
     

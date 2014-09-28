@@ -52,8 +52,8 @@ def make_dims_as_nested_means(head=3630013, splits=8):
     fh_w.close()
     #fh_r.close()
 
-def make_conditional_entropies(head=3630013, ndims=8):
-    fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.nested_means.pickle.copy" % (head, ), "r")
+def make_conditional_entropies(head=3630013, ndims=100, idims=range(100), jdims=range(100)):
+    fh_r = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.nested_means.pickle2" % (head, ), "r")
     fh_w = open("../data/warehouse/gensim_complete_corpus.lsi.%s.projection.vt2.cond_entropy.txt.copy" % (head, ), "w")
     print >> fh_w, "\t".join(["## dim1", "dim2", "cond_entropy"])
     print "reading"
@@ -62,9 +62,9 @@ def make_conditional_entropies(head=3630013, ndims=8):
         dims += [cPickle.load(fh_r)]
     fh_r.close()
     print "generating entropies"
-    for i_dim1 in range(ndims):
+    for i_dim1 in idims: #range(ndims):
         print i_dim1
-        for i_dim2 in range(ndims):
+        for i_dim2 in jdims: #range(ndims):
             if i_dim1 != i_dim2:
                 cond_entropy = entropy.cond_entropy(dims[i_dim1], dims[i_dim2], levels=256)
                 print >> fh_w, "\t".join(map(str, [i_dim1, i_dim2, cond_entropy]))
@@ -91,4 +91,4 @@ if __name__ == "__main__":
     ##make_dims(head=3630013, series_len=19)
     #make_dims_as_nested_means(head=3630013, splits=8)
     ##make_dims_as_nested_means(head=102400, series_len=11, splits=4)
-    make_conditional_entropies(head=3630013, ndims=8)
+    make_conditional_entropies(head=3630013, ndims=100)
