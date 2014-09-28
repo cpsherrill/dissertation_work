@@ -7,3 +7,4 @@ Requirements
     - networkx
     - gensim
     - numpy / scipy
+    - scikit-learn
