@@ -102,10 +102,11 @@ class MyCorpus(object):
         num_chunks = corpus_size/chunk_size +1
         for chunk_id in range(num_chunks):
             print chunk_id+1, "of", num_chunks
-            if restrict_ids is not None:
+            print len(restrict_ids), corpus_size/num_chunks*(chunk_id+0), corpus_size/num_chunks*(chunk_id+1)
+            if restrict_ids is None:
                 my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
             else:
-                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i in restrict_ids and i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
+                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if (i+1) in restrict_ids )
             self.mycorpus = my_iterator
             print "  corpus:", self.mycorpus
             self.tfidf = models.TfidfModel.load(fn_tfidf)
@@ -114,7 +115,7 @@ class MyCorpus(object):
             print "  lsi"
             self.lsi = models.LsiModel.load(fn_lsi)
             self.v = gensim.matutils.corpus2dense(self.lsi[self.corpus_tfidf], len(self.lsi.projection.s)).T / self.lsi.projection.s
-            fh_w = open(fn_lsi+".projection.v.%04d.pickle" % (chunk_id, ),"w")
+            fh_w = open(fn_lsi+".projection.vgood.%04d.pickle" % (chunk_id, ),"w")
             cPickle.dump(self.v, fh_w)
             fh_w.close()
 

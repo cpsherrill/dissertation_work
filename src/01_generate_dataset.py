@@ -98,13 +98,17 @@ def generate_gensim_v(head=None):
 def generate_gensim_vs(head=None, restrict_ids=True):
     ids = None
     if restrict_ids:
-        fh = open("../data/medline_mesh_target_diseases.train.ids","r")
+        if head == 47299:
+            fh = open("../data/medline_mesh_target_diseases.evalu.ids","r")
+        else:
+            fh = open("../data/medline_mesh_target_diseases.train.ids","r")
         ids = []
         for line in fh:
             if "## " not in line:
                 ids += [int(line.strip().split("\t")[1])]
         fh.close()
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
+    print len(ids)
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", None)
     mycorpus.make_gensim_vs("../data/gensim_complete_corpus.mm", "../data/warehouse/gensim_complete_corpus.tfidf."+str(head), "../data/warehouse/gensim_complete_corpus.lsi."+str(head) , 200000, head, ids)
 
 
@@ -169,4 +173,5 @@ if __name__ == "__main__":
     #generate_gensim_vs(3630013)
     #generate_test_train()
     generate_gensim_vs(47350, restrict_ids=True) #project training only
+    generate_gensim_vs(47299, restrict_ids=True) #project evaluation only
     
