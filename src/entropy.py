@@ -6,7 +6,6 @@ import numpy
 import collections
 import math
 
-
 def cond_entropy(dim1, dim2, levels=256):
     paired = zip(dim1, dim2)
     dim1_counter = collections.Counter()
@@ -21,6 +20,38 @@ def cond_entropy(dim1, dim2, levels=256):
         col_count = dim1_counter[level_col]
         for level_row in range(levels):
             density = pair_counter[(level_col, level_row)]*1.0/col_count
+            if density:
+                numerator += density * math.log(density)
+        column_entropy = -1.0 * numerator / math.log(col_count)
+        column_entropies += [(column_entropy, col_count)]
+    conditional_entropy = sum([column_entropy*col_count for (column_entropy, col_count) in column_entropies]) / len(dim1)
+    return conditional_entropy
+
+def cond_entropy_3(dim1, dim2, dim3, levels=8):
+    paired = zip(dim1, zip(dim2, dim3))
+    d_clevel2rlevels = {}
+    for col in range(levels):
+        d_clevel2rlevels[col] = {}
+    for pair in paired:
+        col = pair[0]
+        row = pair[1]
+        if row not in d_clevel2rlevels[col]:
+            d_clevel2rlevels[col][row] = 0
+        d_clevel2rlevels[col][row] += 1
+
+    dim1_counter = collections.Counter()
+    for level in dim1:
+        dim1_counter[level] += 1
+    #pair_counter = collections.Counter()
+    #for pair in paired:
+    #    pair_counter[pair] += 1
+    column_entropies = []
+    for level_col in range(levels):
+        numerator = 0.0
+        col_count = dim1_counter[level_col]
+        for level_row in d_clevel2rlevels[level_col].keys():
+            #density = pair_counter[(level_col, level_row)]*1.0/col_count
+            density = d_clevel2rlevels[level_col][level_row]*1.0/col_count
             if density:
                 numerator += density * math.log(density)
         column_entropy = -1.0 * numerator / math.log(col_count)

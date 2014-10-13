@@ -32,21 +32,26 @@ def text2stop_stem(text):
     return words_stop_stem
 
 class MyCorpus(object):
-    def __init__(self, corpus_fn="", head=None, pmids=None):
+    def __init__(self, corpus_fn="", head=None, pmids=None, ignore_head=True):
         self.corpus_fn = corpus_fn
         self.head = head
         self.pmids = pmids
+        self.ignore_head = ignore_head
 
     def __iter__(self):
+        first_pmid = True
         fh = open(self.corpus_fn, "r")
         for line_num, line in enumerate(fh):
             if line_num % 200000 == 0:
                 print line_num
-            if self.head and line_num+1 == self.head:
+            if not self.ignore_head and self.head and line_num+1 == self.head:
                 break
             if line_num != 0:
-                fields = line.strip().split("\t")
-                if self.pmids is None or fields[1] in self.pmids:
+                fields = line.strip().split("\t", 1)
+                if self.pmids is None or int(fields[0]) in self.pmids:
+                    if first_pmid:
+                        print "reading pmid:", fields[0]
+                        first_pmid = False
                     yield fields[1].split(" ")
         fh.close()
 
@@ -58,8 +63,9 @@ class MyCorpus(object):
         dictionary = corpora.Dictionary(self)
         print dictionary
         #dictionary.save(fn)
-        token_ids = [tokenid for tokenid, docfreq in dictionary.dfs.iteritems() if docfreq < 10]
-        dictionary.filter_tokens(token_ids) # remove words that appear in few documents
+        token_ids = [tokenid for tokenid, docfreq in dictionary.dfs.iteritems() if docfreq < 5]
+        stop_ids = [dictionary.token2id[stopword] for stopword in stop_list if stopword in dictionary.token2id]
+        dictionary.filter_tokens(token_ids + stop_ids) # remove words that appear in few documents or in stop_list
         dictionary.compactify()
         print dictionary
         dictionary.save(fn)
@@ -84,9 +90,9 @@ class MyCorpus(object):
         print "  lsi"
         self.lsi = models.LsiModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
         self.lsi.save(fn_lsi)
-        #print "  lda"
-        #self.lda = models.LdaModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
-        #self.lda.save(fn_lda)
+        print "  lda"
+        self.lda = models.LdaModel(self.corpus_tfidf, id2word=self.dictionary, num_topics=500)
+        self.lda.save(fn_lda)
     
     def make_gensim_v(self, fn_mmcorpus, fn_tfidf, fn_lsi, fn_v):
         self.mycorpus = corpora.MmCorpus(fn_mmcorpus)
@@ -102,11 +108,11 @@ class MyCorpus(object):
         num_chunks = corpus_size/chunk_size +1
         for chunk_id in range(num_chunks):
             print chunk_id+1, "of", num_chunks
-            print len(restrict_ids), corpus_size/num_chunks*(chunk_id+0), corpus_size/num_chunks*(chunk_id+1)
+            print corpus_size/num_chunks*(chunk_id+0), corpus_size/num_chunks*(chunk_id+1)
             if restrict_ids is None:
                 my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i>=(corpus_size/num_chunks*(chunk_id+0)) and i<(corpus_size/num_chunks*(chunk_id+1)))
             else:
-                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if (i+1) in restrict_ids )
+                my_iterator = (d for i,d in enumerate(corpora.MmCorpus(fn_mmcorpus)) if i in restrict_ids )
             self.mycorpus = my_iterator
             print "  corpus:", self.mycorpus
             self.tfidf = models.TfidfModel.load(fn_tfidf)

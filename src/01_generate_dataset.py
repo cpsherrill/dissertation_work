@@ -4,7 +4,9 @@ import cPickle
 import medline
 import nlp
 import random
+import logging
 
+logging.basicConfig(filename='example.log',level=logging.DEBUG)
 
 def determine_stats(medline_dir):
     # determine stats for medline files
@@ -70,19 +72,43 @@ def generate_corpus_file(pmids, medline_dir, fn):
         print >> fh, "\t".join([pmid, abstract])
     fh.close()
 
-def generate_dictionary():
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt")
-    mycorpus.make_dictionary("../data/gensim_complete_corpus.dict")
 
-def generate_gensim_corpus(head=None):
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
-    mycorpus.get_dictionary("../data/gensim_complete_corpus.dict")
-    mycorpus.make_gensim_corpus("../data/gensim_complete_corpus.mm."+str(head), "../data/gensim_complete_corpus.tfidf."+str(head))
+def get_pmids(train=True, evalu=True):
+    pmids = []
+    if train:
+        fh_r = open("../data/medline_mesh_target_diseases.train.ids","r")
+        pmids += [int(l.split("\t")[0]) for l in fh_r.readlines() if "## " not in l]
+        fh_r.close()
+    if evalu:
+        fh_r = open("../data/medline_mesh_target_diseases.evalu.ids","r")
+        pmids += [int(l.split("\t")[0]) for l in fh_r.readlines() if "## " not in l]
+        fh_r.close() 
+    return set(pmids)
+
+def generate_dictionary(restrict_disease=False):
+    pmids = None
+    if restrict_disease:
+        pmids = get_pmids(train=True, evalu=True)
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", pmids=pmids)
+    mycorpus.make_dictionary("../data/gensim_%s_corpus.dict" % (["complete", "disease"][restrict_disease], ))
+
+def generate_gensim_corpus(head=None, restrict_disease=False, train=True, evalu=True):
+    pmids = None
+    if restrict_disease:
+        pmids = get_pmids(train=train, evalu=evalu)    
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head=head, pmids=pmids, ignore_head=True)
+    fn_base = "../data/gensim_%s_corpus" % (["complete", "disease"][restrict_disease], )
+    mycorpus.get_dictionary(fn_base + ".dict")
+    mycorpus.make_gensim_corpus(fn_base + ".mm."+str(head), fn_base + ".tfidf."+str(head))
     
-def generate_gensim_models(head=None):
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
-    mycorpus.get_dictionary("../data/gensim_complete_corpus.dict")
-    mycorpus.make_gensim_models("../data/gensim_complete_corpus.mm."+str(head), "../data/gensim_complete_corpus.tfidf."+str(head), "../data/gensim_complete_corpus.lsi."+str(head), "../data/gensim_complete_corpus.lda."+str(head))
+def generate_gensim_models(head=None, restrict_disease=False):
+    pmids = None
+    if restrict_disease:
+        pmids = get_pmids(train=True, evalu=True)    
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head=head, pmids=pmids)
+    fn_base = "../data/gensim_%s_corpus" % (["complete", "disease"][restrict_disease], )
+    mycorpus.get_dictionary(fn_base + ".dict")
+    mycorpus.make_gensim_models(fn_base+".mm."+str(head), fn_base+".tfidf."+str(head), fn_base+".lsi."+str(head), fn_base+".lda."+str(head))
 
 def generate_gensim_v(head=None):
     mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head)
@@ -95,21 +121,58 @@ def generate_gensim_v(head=None):
     #v = cPickle.load(fh_r)
     #fh_r.close()
     
-def generate_gensim_vs(head=None, restrict_ids=True):
-    ids = None
-    if restrict_ids:
-        if head == 47299:
-            fh = open("../data/medline_mesh_target_diseases.evalu.ids","r")
+def generate_gensim_vs(head=None, restrict_ids=True, restrict_disease=False):
+    pmids = None
+    if restrict_disease:
+        if restrict_ids:
+            if head == 47299:
+                pmids = get_pmids(train=False, evalu=True )
+            else:
+                pmids = get_pmids(train=True,  evalu=False)
         else:
-            fh = open("../data/medline_mesh_target_diseases.train.ids","r")
+            pmids = get_pmids(train=True, evalu=True)    
+        print len(pmids)
+    else:
+        if restrict_ids:
+            if head == 47299:
+                pmids = get_pmids(train=False, evalu=True )
+            else:
+                pmids = get_pmids(train=True,  evalu=False)
+    ids = None
+    
+
+
+    if pmids:
         ids = []
-        for line in fh:
+        print len(pmids)
+        te_pmids = set(get_pmids(train=True, evalu=True ))
+        fh_r = open("../data/corpus_all_pmids.txt", "r")
+        counter = 0
+        printed = False
+        for line_num, line in enumerate(fh_r):
             if "## " not in line:
-                ids += [int(line.strip().split("\t")[1])]
-        fh.close()
-    print len(ids)
-    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", None)
-    mycorpus.make_gensim_vs("../data/gensim_complete_corpus.mm", "../data/warehouse/gensim_complete_corpus.tfidf."+str(head), "../data/warehouse/gensim_complete_corpus.lsi."+str(head) , 200000, head, ids)
+                line_pmid = int(line.strip())
+                if line_pmid in te_pmids:
+                    if line_pmid in pmids:
+                        ids += [counter] # header
+                        if not printed:
+                            printed = True
+                            print "  adding:", line_pmid, counter
+                    counter += 1
+        print "  counter: ", counter
+        fh_r.close()
+        print len(ids)
+    
+
+    mycorpus = nlp.MyCorpus("../data/corpus_all_stop-stem.txt", head=None, pmids=ids)
+
+
+    fn_base    = "../data/gensim_%s_corpus" % (["complete", "disease"][restrict_disease], )
+    fn_base_wh = "../data/warehouse/gensim_%s_corpus" % (["complete", "disease"][restrict_disease], )
+    corpus_size = head
+    if head is None:
+        corpus_size = 47299 + 47350 - 2
+    mycorpus.make_gensim_vs(fn_base+".mm."+str(None), fn_base+".tfidf."+str(None), fn_base_wh+".lsi."+str(head) , 200000, corpus_size, ids)
 
 
 def generate_test_train():
@@ -172,6 +235,15 @@ if __name__ == "__main__":
     #generate_gensim_models(409600)
     #generate_gensim_vs(3630013)
     #generate_test_train()
-    generate_gensim_vs(47350, restrict_ids=True) #project training only
-    generate_gensim_vs(47299, restrict_ids=True) #project evaluation only
+    #generate_gensim_vs(47350, restrict_ids=True) #project training only
+    #generate_gensim_vs(47299, restrict_ids=True) #project evaluation only
     
+    #generate_dictionary(restrict_disease=True)               # ~2 minutes
+    #generate_gensim_corpus(head=None,  restrict_disease=True, train=True,  evalu=True ) # ~2 minutes
+    #generate_gensim_corpus(head=47350, restrict_disease=True, train=True,  evalu=False) # ~2 minutes
+    #generate_gensim_corpus(head=47299, restrict_disease=True, train=False, evalu=True ) # ~2 minutes
+
+    #generate_gensim_models(head=None, restrict_disease=True) # ~31 m
+    generate_gensim_vs(head=None, restrict_ids=False, restrict_disease=True)     # ~ 6m
+    #generate_gensim_vs(47350, restrict_ids=True, restrict_disease=True) #project training only
+    #generate_gensim_vs(47299, restrict_ids=True, restrict_disease=True) #project evaluation only
