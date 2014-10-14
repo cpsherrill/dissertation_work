@@ -8,3 +8,9 @@ Requirements
     - gensim
     - numpy / scipy
     - scikit-learn
+
+
+  - LaTeX
+    - texlive-humanities
+
+  - R

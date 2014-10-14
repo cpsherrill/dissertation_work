@@ -94,7 +94,7 @@ def make_conditional_entropies(head=3630013, ndims=100, idims=range(100), jdims=
 
 def make_conditional_entropies_3(head=3630013, ndims=100, idims=range(100), jdims=99, kdims=100, levels=256, restrict_disease=False, splits=3):
     fh_r = open("../data/warehouse/gensim_%s_corpus.lsi.%s.projection.vgoodt2.nested_means-%s.pickle" % (["complete", "disease"][restrict_disease], head, splits, ), "r")
-    fh_w = open("../data/warehouse/gensim_%s_corpus.lsi.%s.projection.vgoodt2.cond_entropy_3.txt" % (["complete", "disease"][restrict_disease], head, ), "w")
+    fh_w = open("../data/warehouse/gensim_%s_corpus.lsi.%s.projection.vgoodt2.cond_entropy_3_.txt" % (["complete", "disease"][restrict_disease], head, ), "w")
     print >> fh_w, "\t".join(["## dim1", "dim2", "dim3", "cond_entropy"])
     print "reading"
     dims = []
@@ -112,6 +112,24 @@ def make_conditional_entropies_3(head=3630013, ndims=100, idims=range(100), jdim
                     print >> fh_w, "\t".join(map(str, [i_dim1, i_dim2, i_dim3, cond_entropy]))
     fh_w.close()
 
+
+def make_entropies(head=None, restrict_disease=True):
+    head = None
+    fh_r = open("../data/warehouse/gensim_disease_corpus.lsi.%s.projection.vgoodt2.cond_entropy.txt" % (head, ), "r")
+    d_e = {}
+    for line in fh_r:
+        if "## " not in line:
+            fields = line.strip().split("\t")
+            dim1 = int(fields[0])
+            dim2 = int(fields[1])
+            ce = float(fields[2])
+            dims = tuple(sorted([dim1, dim2]))
+            if dims not in d_e:
+                d_e[dims] = ce
+            else:
+                d_e[dims] = max([ce, d_e[dims]])
+    fh_r.close()
+    return d_e
 
 def make_cliques(head=None, threshold=0.452, restrict_disease=False):
     print "making entropies from conditional entropies"
@@ -206,7 +224,7 @@ def make_classifiers(head=47350, thresholds=[.452], method="faam", restrict_dise
     for disease in diseases:
         d_disease2cats_evalu[disease] = [[0,1][disease in d_evalu_gsid2diseases[d_evalu_tid2gsid[i]]] for i in range(n_samples_evalu)]
 
-    fh_w = open("../data/warehouse/gensim_%s_corpus.lsi.%s.projection.vt2.class_stats_evalus.%s.txt" % (["complete", "disease"][restrict_disease], head, method, ), "w")
+    fh_w = open("../data/warehouse/gensim_%s_corpus.lsi.%s_.projection.vt2.class_stats_evalus.%s.txt" % (["complete", "disease"][restrict_disease], head, method, ), "w")
     print >> fh_w, "\t".join(["## threshold", "method", "clique", "disease", "True_Pos_eval", "True_Neg_eval", "False_Pos_eval", "False_Neg_eval", "True_Pos_train", "True_Neg_train", "False_Pos_train", "False_Neg_train"])
 
     d_clique_disease2pline = {}
@@ -231,11 +249,11 @@ def make_classifiers(head=47350, thresholds=[.452], method="faam", restrict_dise
                 if (clique, disease) in d_clique_disease2pline:
                     print >> fh_w, str(threshold)+"\t"+d_clique_disease2pline[(clique, disease)]
                     continue
-                #if disease == 'HIV Infections':
-                #    fh_p = open("train_hiv.pickle","w")
-                #    cPickle.dump(vecs, fh_p)
-                #    cPickle.dump(d_disease2cats[disease], fh_p)
-                #    fh_p.close()
+                if disease == 'HIV Infections' and clique == (0,2,7):
+                    fh_p = open("train_hiv_027.pickle","w")
+                    cPickle.dump(vecs_train, fh_p)
+                    cPickle.dump(d_disease2cats_train[disease], fh_p)
+                    fh_p.close()
 
 
                 p_line = "\t".join(map(str, [method, clique, disease]))
@@ -293,8 +311,8 @@ if __name__ == "__main__":
     #    make_dim_chunks(head=None, series_len=1, start=i, stop=i+50, restrict_disease=True)
     #make_dims_as_nested_means(head=None, splits=5, restrict_disease=True) #~5m
     #make_dims_as_nested_means(head=None, splits=3, restrict_disease=True) #~5m
-    make_conditional_entropies(head=None, ndims=500, idims=range(500), jdims=range(500), levels=32, restrict_disease=True, splits=5) #~2.5h
-    make_conditional_entropies_3(head=None, ndims=100, idims=range(100), jdims=99, kdims=100, levels=256, restrict_disease=False, splits=3)
+    #make_conditional_entropies(head=None, ndims=500, idims=range(500), jdims=range(500), levels=32, restrict_disease=True, splits=5) #~2.5h to 6.5h
+    #make_conditional_entropies_3(head=None, ndims=150, idims=range(150), jdims=149, kdims=150, levels=8, restrict_disease=True, splits=3) #100-14.5h
     ##for t in [.450, .451, .452, .453, .454, .455]:
     ##    print t, make_cliques(head=47350, threshold=t)
 
@@ -302,5 +320,5 @@ if __name__ == "__main__":
     #for i in range(0,500,50):
     #    make_dim_chunks(head=47299, series_len=1, start=i, stop=i+50, restrict_disease=True)
 
-
-    #make_classifiers(head=47350, thresholds=[.448, .449, .450, .451, .452, .453, .454, .455, .456, .457, .458], method="svm", restrict_disease=True)
+    thresholds = [t*1.0/1000 for t in range(410, 423)]
+    make_classifiers(head=47350, thresholds=thresholds, method="svm", restrict_disease=True)

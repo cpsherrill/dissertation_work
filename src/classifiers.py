@@ -52,8 +52,8 @@ class Classifier(object):
 
     def _evalu_svm(self, vectors):
         for i, guess in enumerate(list(self.clf.predict(vectors))):
-            if i%20000==0:
-                print "    SVM evalu, vec: %s" % (i, )
+            #if i%20000==0:
+            #    print "    SVM evalu, vec: %s" % (i, )
             yield guess
 
 
